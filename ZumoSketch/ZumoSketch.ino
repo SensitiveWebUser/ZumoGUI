@@ -24,10 +24,10 @@ void loop() {
 
   unsigned long currentMillis = millis();
   
-    if (Serial.available() > 0) {
+    if (Serial1.available() > 0) {
 
       char input_event = Serial.read();
-      Serial.flush();
+      serialFlush();
 
       if(mode == MODE_ONE){
 
@@ -89,6 +89,12 @@ void updateMultiplier(int new_multiplier) {
 
   if(new_multiplier >= 0 && new_multiplier <= 4) {
     multiplier = new_multiplier;
+  }
+}
+
+void serialFlush(){
+  while(Serial.available() > 0) {
+    char t = Serial.read();
   }
 }
 
