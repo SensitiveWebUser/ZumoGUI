@@ -20,6 +20,7 @@ const actions = [
 	{ key: 'accelerate', icon: KeyboardArrowUpIcon, label: 'Accelerate' },
 	{ key: 'decelerate', icon: KeyboardArrowDownIcon, label: 'Decelerate' },
 	{ key: 'stop', icon: StopIcon, label: 'Stop' },
+	{ key: 'switch', icon: StopIcon, label: 'switch' },
 ];
 
 const App = () => {
