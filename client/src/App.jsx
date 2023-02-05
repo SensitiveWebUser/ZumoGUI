@@ -1,39 +1,71 @@
-import { useContext } from "react";
-import Gamepad from "react-gamepad";
+import { useContext } from 'react';
+import Gamepad from 'react-gamepad';
+import { SocketContext } from './context/socket';
 
-import { Controller } from "./controller";
-import { SocketContext } from "./context/socket";
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Grid from '@mui/material/Grid';
 
-const App = (props) => {
-  const socket = useContext(SocketContext);
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import UndoIcon from '@mui/icons-material/Undo';
+import RedoIcon from '@mui/icons-material/Redo';
+import StopIcon from '@mui/icons-material/Stop';
 
-  return (
-    <div className="app-root">
-      <h1>Serial Data</h1>
-      <p>Click the buttons to send data to the serial port</p>
-      <Gamepad
-        onA={() => socket.emit("serialdata", "s")}
-        onB={() => socket.emit("serialdata", "d")}
-        onX={() => socket.emit("serialdata", "a")}
-        onY={() => socket.emit("serialdata", "w")}
-        //
-        onLB={() => socket.emit("serialdata", "z")}
-        //
-        onLT={() => socket.emit("serialdata", "q")}
-        onRT={() => socket.emit("serialdata", "e")}
-        //
-        onUp={() => socket.emit("serialdata", "w")}
-        onDown={() => socket.emit("serialdata", "s")}
-        onLeft={() => socket.emit("serialdata", "a")}
-        onRight={() => socket.emit("serialdata", "d")}
-        //
-        onRB={() => socket.emit("serialdata", "q")}
-        onLS={() => socket.emit("serialdata", "e")}
-      >
-        <Controller />
-      </Gamepad>
-    </div>
-  );
+const actions = [
+	{ key: 'left', icon: UndoIcon, label: 'Left' },
+	{ key: 'right', icon: RedoIcon, label: 'Right' },
+	{ key: 'forward', icon: KeyboardArrowUpIcon, label: 'Forward' },
+	{ key: 'backward', icon: KeyboardArrowDownIcon, label: 'Backward' },
+	{ key: 'accelerate', icon: KeyboardArrowUpIcon, label: 'Accelerate' },
+	{ key: 'decelerate', icon: KeyboardArrowDownIcon, label: 'Decelerate' },
+	{ key: 'stop', icon: StopIcon, label: 'Stop' },
+];
+
+const App = () => {
+	const socket = useContext(SocketContext);
+	const emitSerialData = (key) => socket.emit('serialdata', key);
+
+	return (
+		<div>
+			<Typography variant="h3">Arduino Zumo Control</Typography>
+			<Typography variant="subtitle1">
+				Click the buttons to send data to the serial port. This setup uses a
+				React client and a Node server to communicate with an Arduino Zumo Bot.
+			</Typography>
+			<Gamepad
+				onA={() => emitSerialData('backwards')}
+				onB={() => emitSerialData('right')}
+				onX={() => emitSerialData('left')}
+				onY={() => emitSerialData('forwards')}
+				onLB={() => emitSerialData('stop')}
+				onLT={() => emitSerialData('decelerate')}
+				onRT={() => emitSerialData('accelerate')}
+				onUp={() => emitSerialData('forward')}
+				onDown={() => emitSerialData('backward')}
+				onLeft={() => emitSerialData('left')}
+				onRight={() => emitSerialData('right')}
+				onRB={() => emitSerialData('accelerate')}
+				onLS={() => emitSerialData('decelerate')}
+			>
+				<Grid container spacing={1}>
+					{actions.map(({ key, icon: Icon, label }, index) => (
+						<Grid key={key} item xs={index < 3 ? 4 : 6} md={2}>
+							<Button
+								variant="contained"
+								color="primary"
+								fullWidth
+								onClick={() => emitSerialData(key)}
+							>
+								<Icon fontSize="large" />
+								{label}
+							</Button>
+						</Grid>
+					))}
+				</Grid>
+			</Gamepad>
+		</div>
+	);
 };
 
 export default App;

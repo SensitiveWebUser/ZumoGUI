@@ -1,8 +1,14 @@
-.app-root {
-	font-family: 'Roboto', sans-serif;
-	font-size: 14px;
-	color: white;
-	text-align: center;
-	background-color: #333;
-	min-height: 100vh;
+:root {
+	--primary-color: #333;
+	--secondary-color: #fff;
+	--font-family: 'Roboto', sans-serif;
+	--font-size: 14px;
+	--text-align: center;
+	--min-height: 100vh;
+	font-family: var(--font-family);
+	font-size: var(--font-size);
+	color: var(--secondary-color);
+	text-align: var(--text-align);
+	background-color: var(--primary-color);
+	min-height: var(--min-height);
 }
