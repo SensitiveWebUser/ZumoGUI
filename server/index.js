@@ -15,7 +15,7 @@ const paths = {
 		{ type: 'xbee', path: 'COM10' },
 	],
 	linux: [
-		{ type: 'cable', path: '/dev/ttyUSB0' },
+		{ type: 'cable', path: '/dev/ttyACM0' },
 		{ type: 'xbee', path: '/dev/ttyUSB0' },
 	],
 };
