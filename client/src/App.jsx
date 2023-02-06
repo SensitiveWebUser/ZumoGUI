@@ -2,15 +2,19 @@ import { useContext } from 'react';
 import Gamepad from 'react-gamepad';
 import { SocketContext } from './context/socket';
 
-import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
 
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import Filter1Icon from '@mui/icons-material/Filter1';
+import Filter2Icon from '@mui/icons-material/Filter2';
+import Filter3Icon from '@mui/icons-material/Filter3';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import UndoIcon from '@mui/icons-material/Undo';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
 import RedoIcon from '@mui/icons-material/Redo';
 import StopIcon from '@mui/icons-material/Stop';
+import UndoIcon from '@mui/icons-material/Undo';
 
 const actions = [
 	{ key: 'left', icon: UndoIcon, label: 'Left' },
@@ -20,7 +24,10 @@ const actions = [
 	{ key: 'accelerate', icon: KeyboardArrowUpIcon, label: 'Accelerate' },
 	{ key: 'decelerate', icon: KeyboardArrowDownIcon, label: 'Decelerate' },
 	{ key: 'stop', icon: StopIcon, label: 'Stop' },
-	{ key: 'switch', icon: StopIcon, label: 'switch' },
+	{ key: 'switch', icon: PowerSettingsNewIcon, label: 'switch' },
+	{ key: 'mode1', icon: Filter1Icon, label: 'mode 1' },
+	{ key: 'mode2', icon: Filter2Icon, label: 'mode 2' },
+	{ key: 'mode3', icon: Filter3Icon, label: 'mode 3' },
 ];
 
 const App = () => {
@@ -39,13 +46,16 @@ const App = () => {
 				onB={() => emitSerialData('right')}
 				onX={() => emitSerialData('left')}
 				onY={() => emitSerialData('forwards')}
+				//
 				onLB={() => emitSerialData('stop')}
 				onLT={() => emitSerialData('decelerate')}
 				onRT={() => emitSerialData('accelerate')}
+				//
 				onUp={() => emitSerialData('forward')}
 				onDown={() => emitSerialData('backward')}
 				onLeft={() => emitSerialData('left')}
 				onRight={() => emitSerialData('right')}
+				//
 				onRB={() => emitSerialData('accelerate')}
 				onLS={() => emitSerialData('decelerate')}
 			>
