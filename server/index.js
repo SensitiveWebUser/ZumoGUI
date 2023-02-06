@@ -3,8 +3,8 @@ import { SerialPort } from 'serialport';
 import { Server as SocketIO } from 'socket.io';
 
 const app = express();
-const isWin = () => process.platform === 'win32';
 
+const isWin = process.platform === 'win32';
 const isWired = true;
 
 const serverPort = 8888;
@@ -19,7 +19,8 @@ const paths = {
 		{ type: 'xbee', path: '/dev/ttyUSB0' },
 	],
 };
-const selectedPath = paths[isWin() ? 'windows' : 'linux'].find(
+
+const selectedPath = paths[isWin ? 'windows' : 'linux'].find(
 	(p) => p.type === (isWired ? 'cable' : 'xbee')
 ).path;
 
