@@ -4,132 +4,143 @@
 #include <Zumo32U4ProximitySensors.h>
 #include <Zumo32U4Buzzer.h>
 
-// Create an instance of the motors object
+// Create instances for each of the Zumo 32U4 libraries.
 Zumo32U4Motors motors;
 Zumo32U4LineSensors lineSensors;
 Zumo32U4ProximitySensors proxSensors;
 Zumo32U4Buzzer buzzer;
 
-// Constant to set the speed of the motors
+// Define the motor speed constant
 const int MOTOR_SPEED = 100;
 
-// Multiplier to control the speed of the motors
+// Multiplier to change motor speed
 int multiplier = 1;
 
-// Constants to represent the different modes
+// Define constants for each mode
 const int MODE_ONE = 1, MODE_TWO = 2, MODE_THREE = 3;
 
-// Current mode
+// Set the default mode to MODE_TWO
 int mode = MODE_TWO;
 
-// Timer variables
+// Timer variables to control the LED
 unsigned long prevMillis = 0;
 unsigned long eventInterval = 1000;
 
+// Flag to track if semi-autonomous mode is active
+static bool isAutoActive = false;
+
 void setup() {
-  // Start serial communication
+  // Start the serial communication
   Serial.begin(9600);
 
+  // Initialize the line sensors, front proximity sensor
   lineSensors.initThreeSensors();
   proxSensors.initFrontSensor();
+
+  //Play sound on start of Bot
   buzzer.play("a");
 }
 
 void loop() {
-  // Check if there is serial input available
+  // If there is data available from the serial, read the command and call the relevant function
   if (Serial.available() > 0) {
-    // Read the serial input as a string
     String cmd = Serial.readStringUntil('\n');
 
-    // Switch based on the current mode
     switch (mode) {
-      // If the current mode is MODE_ONE
       case MODE_ONE:
-        // Call manualControl function with the cmd string as parameter
         manualControl(cmd);
         break;
-
-      // If the current mode is MODE_TWO
       case MODE_TWO:
-        // Call semiAutoControl function with the cmd string as parameter
         semiAutoControl(cmd);
         break;
 
-      // If the current mode is MODE_THREE
       case MODE_THREE:
-        // Do nothing
         break;
     }
 
-    // Call the serialFlush function to clear the serial buffer
+    // Flush the serial buffer
     serialFlush();
   }
 
-  // Get the current millis
+  // Get the current time
   unsigned long currMillis = millis();
 
-  // Check if the current millis minus the previous millis is greater than or equal to eventInterval
+  // If the current time minus the previous time is greater than the event interval
   if (currMillis - prevMillis >= eventInterval) {
-    // Set the prevMillis to the current millis
+    // Update the previous time to the current time
     prevMillis = currMillis;
 
-    // Turn on all the LEDS
+    // Turn on all the LEDs
     ledRed(1), ledYellow(1), ledGreen(1);
   }
 
-  // Check if the current millis minus the previous millis is greater than or equal to eventInterval / 2
+  // If the current time minus the previous time is greater than half the event interval
   else if (currMillis - prevMillis >= eventInterval / 2) {
-    // Turn off all the LEDS
+    // Turn off all the LEDs
     ledRed(0), ledYellow(0), ledGreen(0);
   }
 }
 
-/* 
-   manualControl function processes commands received through serial communication 
-   to control the movement of the motors. The received command is compared with 
-   predefined keywords to determine the desired action: forward, backward, left, 
-   right, stop, accelerate, and decelerate.
-*/
+// Function to handle manual control commands
 void manualControl(String cmd) {
-  // return if no command is received
+
+  // If no command is provided, return
   if (cmd == "") return;
 
-  // set motor speeds based on the received command
-  if (cmd == "forward") motors.setSpeeds(MOTOR_SPEED * multiplier, MOTOR_SPEED * multiplier);
-  else if (cmd == "backward") motors.setSpeeds(-(MOTOR_SPEED * multiplier), -(MOTOR_SPEED * multiplier));
-  else if (cmd == "left") motors.setSpeeds(MOTOR_SPEED * multiplier, -(MOTOR_SPEED * multiplier));
-  else if (cmd == "right") motors.setSpeeds(-(MOTOR_SPEED * multiplier), MOTOR_SPEED * multiplier);
-  else if (cmd == "stop") motors.setSpeeds(0, 0);
-  else if (cmd == "accelerate") updateMultiplier(multiplier - 1);
-  else if (cmd == "decelerate") updateMultiplier(multiplier + 1);
+  // Check the command and set the motor speeds accordingly
+  if (cmd == "forward") {
+    // Set both motors to run forward at the same speed
+    motors.setSpeeds(MOTOR_SPEED * multiplier, MOTOR_SPEED * multiplier);
+  } else if (cmd == "backward") {
+    // Set both motors to run backward at the same speed
+    motors.setSpeeds(-(MOTOR_SPEED * multiplier), -(MOTOR_SPEED * multiplier));
+  } else if (cmd == "left") {
+    // Set the left motor to run backward and the right motor to run forward
+    motors.setSpeeds(MOTOR_SPEED * multiplier, -(MOTOR_SPEED * multiplier));
+  } else if (cmd == "right") {
+    // Set the left motor to run forward and the right motor to run backward
+    motors.setSpeeds(-(MOTOR_SPEED * multiplier), MOTOR_SPEED * multiplier);
+  } else if (cmd == "stop") {
+    // Stop both motors
+    motors.setSpeeds(0, 0);
+  } else if (cmd == "accelerate") {
+    // Decrease the speed multiplier
+    updateMultiplier(multiplier + 1);
+  } else if (cmd == "decelerate") {
+    // Increase the speed multiplier
+    updateMultiplier(multiplier - 1);
+  }
 }
 
-/* 
-   semiAutoControl function processes commands received through serial communication
-   to control the behavior of the semi-autonomous mode. The function uses a static
-   boolean variable isAutoActive to keep track of the current state of the semi-autonomous
-   mode. If the received command is "switch", the state of isAutoActive is toggled.
-*/
+// Function to handle semi-autonomous control commands
 void semiAutoControl(String cmd) {
-  static bool isAutoActive = false;
 
+  // If the command is to switch between manual and semi-autonomous mode
   if (cmd == "switch") {
+    // Toggle the flag that indicates if semi-autonomous mode is active
     isAutoActive = !isAutoActive;
+    
     if (isAutoActive) {
+      // If semi-autonomous mode is active, print a message and set the motors to run
       Serial.println("Semi-Autonomous Mode Active");
       motors.setSpeeds(MOTOR_SPEED * multiplier, MOTOR_SPEED * multiplier);
     } else {
+      // If semi-autonomous mode is inactive, print a message and stop the motors
       Serial.println("Semi-Autonomous Mode Inactive");
       motors.setSpeeds(0, 0);
     }
+
+    return;
   }
 
   String name = "";
 
-  Serial1.print("Make a turn using 'L' or 'R', then press 'C' to resume. \n");/*prints out to the user*/
+  Serial1.print("Make a turn using 'L' or 'R', then press 'C' to resume. \n"); /*prints out to the user*/
 
-    switch(cmd) {
-      case 'l': case'L':{ /*If A is entered turn left*/
+  switch (cmd) {
+    case 'l':
+    case 'L':
+      { /*If A is entered turn left*/
         name = "Left";
         Serial1.println("Left turn 90 degrees \n"); /*prints out the command to the user*/
         motors.setSpeeds(-MOTOR_TURN_SPEED, MOTOR_TURN_SPEED);
@@ -140,7 +151,9 @@ void semiAutoControl(String cmd) {
         break;
       }
 
-    case 'r': case'R':{ /*If A is entered turn left*/
+    case 'r':
+    case 'R':
+      { /*If A is entered turn left*/
         name = "Right";
         Serial1.println("Left turn 90 degrees \n"); /*prints out the command to the user*/
         motors.setSpeeds(MOTOR_TURN_SPEED, -MOTOR_TURN_SPEED);
@@ -150,7 +163,9 @@ void semiAutoControl(String cmd) {
         autoNavigator();
         break;
       }
-    case 'b': case'B':{ /*If A is entered turn left*/
+    case 'b':
+    case 'B':
+      { /*If A is entered turn left*/
         name = "180";
         Serial1.println("Turn 180 degrees \n"); /*prints out the command to the user*/
         motors.setSpeeds(-MOTOR_TURN_SPEED, MOTOR_TURN_SPEED);
@@ -161,23 +176,20 @@ void semiAutoControl(String cmd) {
         break;
       }
       return;
-    }
-      
+  }
 }
 
-/* 
-   updateMultiplier function updates the value of the multiplier variable. The multiplier
-   is used to adjust the speed of the motors. The function takes an integer value as an 
-   argument and updates the multiplier if the value is between 0 and 4 (inclusive).
-*/
+// Function to update the speed multiplier
 void updateMultiplier(int m) {
-  if (m >= 0 && m <= 4) multiplier = m;
+  // Check if the provided multiplier is within the valid range (0 to 4)
+  if (m >= 0 && m <= 4) {
+    // If it is, update the multiplier
+    multiplier = m;
+  }
 }
 
-/*
-   serialFlush function is used to clear the serial buffer by reading all available
-   data until there is no more data left in the buffer.
-*/
+// Function to flush the serial buffer
 void serialFlush() {
+  // Read and discard any data in the serial buffer
   while (Serial.available() > 0) Serial.read();
 }
