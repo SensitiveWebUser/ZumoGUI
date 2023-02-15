@@ -12,7 +12,7 @@ const serverPort = 8888;
 const paths = {
 	windows: [
 		{ type: 'cable', path: 'COM5' },
-		{ type: 'xbee', path: 'COM10' },
+		{ type: 'xbee', path: 'COM11' },
 	],
 	linux: [
 		{ type: 'cable', path: '/dev/ttyACM0' },

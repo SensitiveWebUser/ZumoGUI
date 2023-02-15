@@ -15,7 +15,6 @@ import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
 import RedoIcon from '@mui/icons-material/Redo';
 import StopIcon from '@mui/icons-material/Stop';
 import UndoIcon from '@mui/icons-material/Undo';
-
 const actions = [
 	{ key: 'left', icon: UndoIcon, label: 'Left' },
 	{ key: 'right', icon: RedoIcon, label: 'Right' },
@@ -28,6 +27,7 @@ const actions = [
 	{ key: 'mode1', icon: Filter1Icon, label: 'mode 1' },
 	{ key: 'mode2', icon: Filter2Icon, label: 'mode 2' },
 	{ key: 'mode3', icon: Filter3Icon, label: 'mode 3' },
+	{ key: 'switchMode', icon: Filter3Icon, label: 'switchMode' },
 ];
 
 const App = () => {
