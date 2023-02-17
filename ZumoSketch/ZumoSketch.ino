@@ -3,20 +3,26 @@
 #include <Zumo32U4LineSensors.h>
 #include <Zumo32U4ProximitySensors.h>
 #include <Zumo32U4Buzzer.h>
+#include <Zumo32U4IMU.h>
 
 // Create instances for each of the Zumo 32U4 libraries.
-Zumo32U4Motors motors;
-Zumo32U4LineSensors lineSensors;
 Zumo32U4ProximitySensors proxSensors;
+Zumo32U4LineSensors lineSensors;
+Zumo32U4Motors motors;
 Zumo32U4Buzzer buzzer;
+Zumo32U4IMU imu;
+
+#include "TurnSensor.h"
 
 // Define the motor speed constant
-static const uint8_t MOTOR_SPEED = 75;
-
-static const float ROTATION_SPEED = 1.2f;
-
+#define motorSpeed_FIXED_POINT 100
 // Multiplier to change motor speed
 static uint16_t multiplier = 1;
+
+// Set motor speed
+static uint16_t motorSpeed = motorSpeed_FIXED_POINT * multiplier;
+
+static const float ROTATION_SPEED = 1.2f;
 
 // Define constants for each mode
 static const int8_t MODE_ONE = 1, MODE_TWO = 2, MODE_THREE = 3;
@@ -37,21 +43,23 @@ static const uint16_t threshold = 200;
 char stringBuffer[200];
 
 void setup() {
-  // Start the Serial1 communication
-  Serial1.begin(9600);
+  // Start the Serial communication
+  Serial.begin(9600);
 
   // Initialize the line sensors, front proximity sensor
   lineSensors.initThreeSensors();
   proxSensors.initFrontSensor();
+
+  turnSensorSetup();
 
   //Play sound on start of Bot
   //buzzer.play("a"); /* TODO: Uncomment
 }
 
 void loop() {
-  // If there is data available from the Serial1, read the command and call the relevant function
-  if (Serial1.available() > 0) {
-    String cmd = Serial1.readStringUntil('\n');
+  // If there is data available from the Serial, read the command and call the relevant function
+  if (Serial.available() > 0) {
+    String cmd = Serial.readStringUntil('\n');
 
     if (cmd == "switchMode") {
       mode = mode != MODE_ONE ? MODE_ONE : MODE_TWO;
@@ -70,8 +78,8 @@ void loop() {
         break;
     }
 
-    // Flush the Serial1 buffer
-    Serial1Flush();
+    // Flush the Serial buffer
+    SerialFlush();
   }
 
   // Get the current time
@@ -102,16 +110,16 @@ void manualControl(String cmd) {
   // Check the command and set the motor speeds accordingly
   if (cmd == "forward") {
     // Set both motors to run forward at the same speed
-    motors.setSpeeds((uint16_t)(MOTOR_SPEED * multiplier), (uint16_t)(MOTOR_SPEED * multiplier));
+    motors.setSpeeds((uint16_t)motorSpeed, (uint16_t)motorSpeed);
   } else if (cmd == "backward") {
     // Set both motors to run backward at the same speed
-    motors.setSpeeds(-(uint16_t)(MOTOR_SPEED * multiplier), -(uint16_t)(MOTOR_SPEED * multiplier));
+    motors.setSpeeds(-(uint16_t)motorSpeed, -(uint16_t)motorSpeed);
   } else if (cmd == "left") {
     // Set the left motor to run backward and the right motor to run forward
-    motors.setSpeeds(-(uint16_t)((MOTOR_SPEED * multiplier) * ROTATION_SPEED), (uint16_t)((MOTOR_SPEED * multiplier) * ROTATION_SPEED));
+    motors.setSpeeds(-(uint16_t)(motorSpeed * ROTATION_SPEED), (uint16_t)(motorSpeed * ROTATION_SPEED));
   } else if (cmd == "right") {
     // Set the left motor to run forward and the right motor to run backward
-    motors.setSpeeds((uint16_t)((MOTOR_SPEED * multiplier) * ROTATION_SPEED), -(uint16_t)((MOTOR_SPEED * multiplier) * ROTATION_SPEED));
+    motors.setSpeeds((uint16_t)(motorSpeed * ROTATION_SPEED), -(uint16_t)(motorSpeed * ROTATION_SPEED));
   } else if (cmd == "stop") {
     // Stop both motors
     motors.setSpeeds(0, 0);
@@ -134,39 +142,39 @@ void semiAutoControl(String cmd) {
 
     if (isAutoActive) {
       // If semi-autonomous mode is active, print a message and set the motors to run
-      Serial1.println("Semi-Autonomous Mode Active");
+      Serial.println("Semi-Autonomous Mode Active");
       autoNavigator();
     } else {
       // If semi-autonomous mode is inactive, print a message and stop the motors
-      Serial1.println("Semi-Autonomous Mode Inactive");
+      Serial.println("Semi-Autonomous Mode Inactive");
       motors.setSpeeds(0, 0);
     }
 
     return;
   }
 
-  Serial1.print("Make a turn using 'left' or 'right' \n"); /*prints out to the user*/
+  Serial.print("Make a turn using 'left' or 'right' \n"); /*prints out to the user*/
   updateMultiplier(3);
+  turnSensorReset();
 
   if (cmd == "left") {
-    Serial1.println("Left turn 90 degrees \n");
-    motors.setSpeeds(-(MOTOR_SPEED * multiplier),
-                     (MOTOR_SPEED * multiplier));
-    delay(330);
-    motors.setSpeeds(0, 0);
+    motors.setSpeeds(-motorSpeed,
+                     motorSpeed);
+    while (turnAngle < turnAngle90) {
+      turnSensorUpdate();
+    }
     autoNavigator();
   } else if (cmd == "right") {
-    Serial1.println("Left turn 90 degrees \n");
-    motors.setSpeeds((MOTOR_SPEED * multiplier), -(MOTOR_SPEED * multiplier));
-    delay(330);
-    motors.setSpeeds(0, 0);
+    motors.setSpeeds(motorSpeed, -motorSpeed);
+    while (turnAngle > -turnAngle90) {
+      turnSensorUpdate();
+    }
     autoNavigator();
   } else if (cmd == "backward") {
-    Serial1.println("Turn 180 degrees \n");
-    motors.setSpeeds(-(MOTOR_SPEED * multiplier),
-                     (MOTOR_SPEED * multiplier));
-    delay(660);
-    motors.setSpeeds(0, 0);
+    motors.setSpeeds(-motorSpeed, motorSpeed);
+    while (turnAngle < (int64_t)((turnAngle90 * 2))) {
+      turnSensorUpdate();
+    }
     autoNavigator();
   } else if (cmd == "mode1") {
     autoNavigator();
@@ -175,13 +183,15 @@ void semiAutoControl(String cmd) {
 
 void autoNavigator() {
 
-  bool active = true;
+  motors.setSpeeds(0, 0);
+
+  bool active = false;
 
   float modifyer = 1.35f;
 
   while (active) {
 
-    if (Serial1.available() > 0) {
+    if (Serial.available() > 0) {
       active = false;
       motors.setSpeeds(0, 0);
       break;
@@ -191,7 +201,7 @@ void autoNavigator() {
     uint16_t rightMotor = 75;
 
     lineSensors.read(lineSensorValues);
-    //printReadingsToSerial1();
+    //printReadingsToSerial();
 
     for (uint8_t x = 0; x <= 2; x++) {
 
@@ -210,29 +220,29 @@ void autoNavigator() {
         motors.setSpeeds(0, 0);
         switch (x) {
           case 0:
-            leftMotor = (uint16_t)(MOTOR_SPEED * modifyer);
-            rightMotor = -(uint16_t)(MOTOR_SPEED * modifyer);
+            leftMotor = (uint16_t)(motorSpeed * modifyer);
+            rightMotor = -(uint16_t)(motorSpeed * modifyer);
             prevMillis = currMillis;
             break;
           case 2:
-            rightMotor = (uint16_t)(MOTOR_SPEED * modifyer);
-            leftMotor = -(uint16_t)(MOTOR_SPEED * modifyer);
+            rightMotor = (uint16_t)(motorSpeed * modifyer);
+            leftMotor = -(uint16_t)(motorSpeed * modifyer);
             prevMillis = currMillis;
             break;
         }
       }
     }
 
-      motors.setSpeeds(leftMotor, rightMotor);
+    motors.setSpeeds(leftMotor, rightMotor);
   }
 }
 
-void printReadingsToSerial1() {
+void printReadingsToSerial() {
   sprintf(stringBuffer, "Values: %d %d %d\n",
           lineSensorValues[0],
           lineSensorValues[1],
           lineSensorValues[2]);
-  Serial1.print(stringBuffer);
+  Serial.print(stringBuffer);
 }
 
 // Function to update the speed multiplier
@@ -244,8 +254,8 @@ void updateMultiplier(int m) {
   }
 }
 
-// Function to flush the Serial1 buffer
-void Serial1Flush() {
-  // Read and discard any data in the Serial1 buffer
-  while (Serial1.available() > 0) Serial1.read();
+// Function to flush the Serial buffer
+void SerialFlush() {
+  // Read and discard any data in the Serial buffer
+  while (Serial.available() > 0) Serial.read();
 }
