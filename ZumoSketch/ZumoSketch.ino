@@ -1,3 +1,4 @@
+// Include libraries
 #include <Zumo32U4.h>
 #include <Zumo32U4Motors.h>
 #include <Zumo32U4LineSensors.h>
@@ -5,67 +6,67 @@
 #include <Zumo32U4Buzzer.h>
 #include <Zumo32U4IMU.h>
 
-// Create instances for each of the Zumo 32U4 libraries.
+// Create objects
 Zumo32U4ProximitySensors proxSensors;
 Zumo32U4LineSensors lineSensors;
 Zumo32U4Motors motors;
 Zumo32U4Buzzer buzzer;
 Zumo32U4IMU imu;
 
-#include "TurnSensor.h"
+// Sets Serial Communication type
+#define SERIAL_COM Serial
 
-// Define the motor speed constant
-#define motorSpeed_FIXED_POINT 100
-// Multiplier to change motor speed
+// Motor speed variables
+#define MOTOR_SPEED 100
 static uint16_t multiplier = 1;
+static uint16_t motorSpeed = MOTOR_SPEED * multiplier;
+static uint16_t rotationSpeed = MOTOR_SPEED * 0.5f;
 
-// Set motor speed
-static uint16_t motorSpeed = motorSpeed_FIXED_POINT * multiplier;
+// Mode variables
+static const uint8_t MODE_ONE = 1, MODE_TWO = 2, MODE_THREE = 3;
+static uint8_t mode = MODE_THREE;
 
-static const float ROTATION_SPEED = 1.2f;
-
-// Define constants for each mode
-static const int8_t MODE_ONE = 1, MODE_TWO = 2, MODE_THREE = 3;
-
-// Set the default mode to MODE_TWO
-static int8_t mode = MODE_TWO;
-
-// Timer variables to control the LED
-static uint64_t prevMillis = 0;
+// Event LED variables
+static uint64_t prevLEDMillis = 0;
 static const uint16_t EVENT_LED_INTERVAL = 1000;
 
-// Flag to track if semi-autonomous mode is active
-static bool isAutoActive = false;
-
+// Line sensor values
 static uint16_t lineSensorValues[3] = { 0, 0, 0 };
 static const uint16_t threshold = 200;
 
-char stringBuffer[200];
+// Include additional code files
+#include "TurnSensor.h"
+#include "Util.h"
 
+// Setup function that runs once at the start
 void setup() {
-  // Start the Serial communication
-  Serial.begin(9600);
+  // Initialize Serial communication
+  SERIAL_COM.begin(9600);
 
-  // Initialize the line sensors, front proximity sensor
+  // Initialize line sensors and proximity sensors
   lineSensors.initThreeSensors();
   proxSensors.initFrontSensor();
 
+  // Setup turn sensor
   turnSensorSetup();
-
-  //Play sound on start of Bot
-  //buzzer.play("a"); /* TODO: Uncomment
 }
 
+// Loop function that runs continuously
 void loop() {
-  // If there is data available from the Serial, read the command and call the relevant function
-  if (Serial.available() > 0) {
-    String cmd = Serial.readStringUntil('\n');
 
+  // Check for incoming Serial commands
+  if (SERIAL_COM.available() > 0) {
+
+    // Read the command from the Serial buffer
+    String cmd = SERIAL_COM.readStringUntil('\n');
+
+    // TODO: Add a command to switch between modes
     if (cmd == "switchMode") {
       mode = mode != MODE_ONE ? MODE_ONE : MODE_TWO;
       motors.setSpeeds(0, 0);
     }
 
+    // Check the current mode and handle the command accordingly
     switch (mode) {
       case MODE_ONE:
         manualControl(cmd);
@@ -73,30 +74,23 @@ void loop() {
       case MODE_TWO:
         semiAutoControl(cmd);
         break;
-
       case MODE_THREE:
+        autoControl(cmd);
         break;
     }
 
-    // Flush the Serial buffer
     SerialFlush();
   }
 
-  // Get the current time
+  // Set current time and time since last LED update
   const uint64_t currMillis = millis();
+  const uint64_t ledTimeUpdate = (uint64_t)(currMillis - prevLEDMillis);
 
-  // If the current time minus the previous time is greater than the event interval
-  if (currMillis - prevMillis >= EVENT_LED_INTERVAL) {
-    // Update the previous time to the current time
-    prevMillis = currMillis;
-
-    // Turn on all the LEDs
+  // Update the LED every second
+  if (ledTimeUpdate >= EVENT_LED_INTERVAL) {
+    prevLEDMillis = currMillis;
     ledRed(1), ledYellow(1), ledGreen(1);
-  }
-
-  // If the current time minus the previous time is greater than half the event interval
-  else if (currMillis - prevMillis >= EVENT_LED_INTERVAL / 2) {
-    // Turn off all the LEDs
+  } else if (ledTimeUpdate >= EVENT_LED_INTERVAL / 2) {
     ledRed(0), ledYellow(0), ledGreen(0);
   }
 }
@@ -104,22 +98,24 @@ void loop() {
 // Function to handle manual control commands
 void manualControl(String cmd) {
 
-  // If no command is provided, return
   if (cmd == "") return;
+
+  motorSpeed = MOTOR_SPEED * multiplier;
+  rotationSpeed = motorSpeed * 0.5f;
 
   // Check the command and set the motor speeds accordingly
   if (cmd == "forward") {
     // Set both motors to run forward at the same speed
-    motors.setSpeeds((uint16_t)motorSpeed, (uint16_t)motorSpeed);
+    motors.setSpeeds(motorSpeed, motorSpeed);
   } else if (cmd == "backward") {
     // Set both motors to run backward at the same speed
-    motors.setSpeeds(-(uint16_t)motorSpeed, -(uint16_t)motorSpeed);
+    motors.setSpeeds(-motorSpeed, -motorSpeed);
   } else if (cmd == "left") {
     // Set the left motor to run backward and the right motor to run forward
-    motors.setSpeeds(-(uint16_t)(motorSpeed * ROTATION_SPEED), (uint16_t)(motorSpeed * ROTATION_SPEED));
+    motors.setSpeeds(-rotationSpeed, rotationSpeed);
   } else if (cmd == "right") {
     // Set the left motor to run forward and the right motor to run backward
-    motors.setSpeeds((uint16_t)(motorSpeed * ROTATION_SPEED), -(uint16_t)(motorSpeed * ROTATION_SPEED));
+    motors.setSpeeds(rotationSpeed, -rotationSpeed);
   } else if (cmd == "stop") {
     // Stop both motors
     motors.setSpeeds(0, 0);
@@ -132,82 +128,112 @@ void manualControl(String cmd) {
   }
 }
 
-// Function to handle semi-autonomous control commands
+// Function to handle semi-auto control commands
 void semiAutoControl(String cmd) {
 
-  // If the command is to switch between manual and semi-autonomous mode
-  if (cmd == "switch") {
-    // Toggle the flag that indicates if semi-autonomous mode is active
-    isAutoActive = !isAutoActive;
+  //
+  SERIAL_COM.print("Make a turn using 'left' or 'right' \n");
 
-    if (isAutoActive) {
-      // If semi-autonomous mode is active, print a message and set the motors to run
-      Serial.println("Semi-Autonomous Mode Active");
-      autoNavigator();
-    } else {
-      // If semi-autonomous mode is inactive, print a message and stop the motors
-      Serial.println("Semi-Autonomous Mode Inactive");
-      motors.setSpeeds(0, 0);
-    }
-
-    return;
-  }
-
-  Serial.print("Make a turn using 'left' or 'right' \n"); /*prints out to the user*/
+  // Sets multiplier to 3 for the turning
   updateMultiplier(3);
-  turnSensorReset();
 
+  // Check the command and rotate the robot accordingly
   if (cmd == "left") {
-    motors.setSpeeds(-motorSpeed,
-                     motorSpeed);
-    while (turnAngle < turnAngle90) {
-      turnSensorUpdate();
-    }
+    // Set the left motor to run backward and the right motor to run forward (90 degree left turn)
+    SERIAL_COM.println("Turning left");
+    turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
     autoNavigator();
   } else if (cmd == "right") {
-    motors.setSpeeds(motorSpeed, -motorSpeed);
-    while (turnAngle > -turnAngle90) {
-      turnSensorUpdate();
-    }
+    SERIAL_COM.println("Turning Right");
+    // Set the left motor to run forward and the right motor to run backward (90 degree right turn)
+    turnZumo(-turnAngle90, motorSpeed, -motorSpeed, rightTurnCheck);
     autoNavigator();
   } else if (cmd == "backward") {
-    motors.setSpeeds(-motorSpeed, motorSpeed);
-    while (turnAngle < (int64_t)((turnAngle90 * 2))) {
-      turnSensorUpdate();
-    }
+    // Set the left motor to run forward and the right motor to run backward (180 degree turn)
+    turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
     autoNavigator();
   } else if (cmd == "mode1") {
+    // TODO: Remove this option
     autoNavigator();
   }
 }
 
-void autoNavigator() {
+// Function to handle auto control commands
+void autoControl(String cmd) {
 
-  motors.setSpeeds(0, 0);
+  //TODO: check front, left, right and lastly behind for open area
+  bool pathValues[3] = { false, false, false };
+
+  for (uint8_t x = 0; x <= 2; x++) {
+
+    switch (x) {
+      case 0:
+        turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
+        break;
+      case 1:
+        turnZumo(-turnAngle180, motorSpeed, -motorSpeed, rightTurnCheck);
+        break;
+      case 2:
+        turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
+        break;
+    }
+
+    lineSensors.read(lineSensorValues);
+    const uint16_t lineValue = lineSensorValues[1];
+
+    if (lineValue > threshold) {
+      pathValues[x] = false;
+      continue;
+    }
+    pathValues[x] = true;
+  }
+
+  // Reset rotation
+  turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
+
+  if (pathValues[0] == true) {
+    turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
+    autoNavigator();    
+  } else if (pathValues[1] == true) {
+    turnZumo(-turnAngle90, motorSpeed, -motorSpeed, rightTurnCheck);
+    autoNavigator();
+  } else if (pathValues[2] == true) {
+    turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
+    autoNavigator();
+  }
+}
+
+// Function to handle auto navigation
+void autoNavigator() {
 
   bool active = false;
 
   float modifyer = 1.35f;
 
+  // Loop until the robot reaches the end of a straight line
   while (active) {
 
-    if (Serial.available() > 0) {
+    // Check for incoming Serial commands to exit the loop
+    if (SERIAL_COM.available() > 0) {
       active = false;
       motors.setSpeeds(0, 0);
       break;
     }
 
+    // Set the default motor speeds
     uint16_t leftMotor = 75;
     uint16_t rightMotor = 75;
 
+    // Read the line sensor values
     lineSensors.read(lineSensorValues);
-    //printReadingsToSerial();
+    printReadingsToSerial();
 
-    for (uint8_t x = 0; x <= 2; x++) {
+    // Loop through the line sensor values and check for a line
+    for (uint8_t postion = 0; postion <= 2; postion++) {
 
-      const uint16_t lineValue = lineSensorValues[x];
+      const uint16_t lineValue = lineSensorValues[postion];
 
-      if (x == 1 && lineValue > threshold) {
+      if (postion == 1 && lineValue > threshold) {
         active = false;
         leftMotor = 0;
         rightMotor = 0;
@@ -216,46 +242,25 @@ void autoNavigator() {
 
       const uint64_t currMillis = millis();
 
-      if (lineValue > threshold && currMillis - prevMillis > 20) {
+      // Check if the line sensor is over a line and set the motor speeds accordingly
+      if (lineValue > threshold && currMillis - prevLEDMillis > 20) {
         motors.setSpeeds(0, 0);
-        switch (x) {
+        switch (postion) {
           case 0:
             leftMotor = (uint16_t)(motorSpeed * modifyer);
             rightMotor = -(uint16_t)(motorSpeed * modifyer);
-            prevMillis = currMillis;
+            prevLEDMillis = currMillis;
             break;
           case 2:
             rightMotor = (uint16_t)(motorSpeed * modifyer);
             leftMotor = -(uint16_t)(motorSpeed * modifyer);
-            prevMillis = currMillis;
+            prevLEDMillis = currMillis;
             break;
         }
       }
     }
 
+    // Set the motor speeds
     motors.setSpeeds(leftMotor, rightMotor);
   }
-}
-
-void printReadingsToSerial() {
-  sprintf(stringBuffer, "Values: %d %d %d\n",
-          lineSensorValues[0],
-          lineSensorValues[1],
-          lineSensorValues[2]);
-  Serial.print(stringBuffer);
-}
-
-// Function to update the speed multiplier
-void updateMultiplier(int m) {
-  // Check if the provided multiplier is within the valid range (0 to 4)
-  if (m >= 0 && m <= 4) {
-    // If it is, update the multiplier
-    multiplier = m;
-  }
-}
-
-// Function to flush the Serial buffer
-void SerialFlush() {
-  // Read and discard any data in the Serial buffer
-  while (Serial.available() > 0) Serial.read();
 }
