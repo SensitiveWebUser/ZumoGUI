@@ -1,3 +1,5 @@
+#include <stdint.h>
+// Link: https://github.com/pololu/zumo-32u4-arduino-library/blob/master/examples/MazeSolver/TurnSensor.h
 // Turnsensor.h provides functions for configuring the
 // Zumo 32U4's gyro, calibrating it, and using it to
 // measure how much the robot has turned about its Z axis.
@@ -15,6 +17,9 @@ const int64_t turnAngle45 = 0x20000000;
 
 // This constant represents a turn of 90 degrees.
 const int64_t turnAngle90 = turnAngle45 * 2;
+
+// This constant represents a tun of 180 degrees.
+const int64_t turnAngle180 = turnAngle90 * 2;
 
 // This constant represents a turn of approximately 1 degree.
 const int64_t turnAngle1 = (turnAngle45 + 22) / 45;
@@ -48,16 +53,14 @@ uint16_t gyroLastUpdate = 0;
 
 // This should be called to set the starting point for measuring
 // a turn.  After calling this, turnAngle will be 0.
-void turnSensorReset()
-{
+void turnSensorReset() {
   gyroLastUpdate = micros();
   turnAngle = 0;
 }
 
 // Read the gyro and update the angle.  This should be called as
 // frequently as possible while using the gyro to do turns.
-void turnSensorUpdate()
-{
+void turnSensorUpdate() {
   // Read the measurements from the gyro.
   imu.readGyro();
   turnRate = imu.g.z - gyroOffset;
@@ -91,10 +94,9 @@ still.
 The digital zero-rate level of the gyro can be as high as
 25 degrees per second, and this calibration helps us correct for
 that. */
-void turnSensorSetup()
-{
+void turnSensorSetup() {
   Wire.begin();
-  
+
   imu.init();
   imu.enableDefault();
   imu.configureForTurnSensing();
@@ -104,10 +106,9 @@ void turnSensorSetup()
 
   // Calibrate the gyro.
   int32_t total = 0;
-  for (uint16_t i = 0; i < 1024; i++)
-  {
+  for (uint16_t i = 0; i < 1024; i++) {
     // Wait for new data to be available, then read it.
-    while(!imu.gyroDataReady()) {}
+    while (!imu.gyroDataReady()) {}
     imu.readGyro();
 
     // Add the Z axis reading to the total.
