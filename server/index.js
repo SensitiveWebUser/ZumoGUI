@@ -5,14 +5,14 @@ import { Server as SocketIO } from 'socket.io';
 const app = express();
 
 const isWin = process.platform === 'win32';
-const isWired = true;
+const isWired = false;
 
 const serverPort = 8888;
 
 const paths = {
 	windows: [
-		{ type: 'cable', path: 'COM5' },
-		{ type: 'xbee', path: 'COM11' },
+		{ type: 'cable', path: 'COM11' },
+		{ type: 'xbee', path: 'COM13' },
 	],
 	linux: [
 		{ type: 'cable', path: '/dev/ttyACM0' },
