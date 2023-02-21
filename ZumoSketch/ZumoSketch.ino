@@ -24,7 +24,7 @@ static uint16_t rotationSpeed = MOTOR_SPEED * 0.5f;
 
 // Mode variables
 static const uint8_t MODE_ONE = 1, MODE_TWO = 2, MODE_THREE = 3;
-static uint8_t mode = MODE_THREE;
+static uint8_t mode = MODE_TWO;
 
 // Event LED variables
 static uint64_t prevLEDMillis = 0;
@@ -32,7 +32,7 @@ static const uint16_t EVENT_LED_INTERVAL = 1000;
 
 // Line sensor values
 static uint16_t lineSensorValues[3] = { 0, 0, 0 };
-static const uint16_t threshold = 200;
+static const uint16_t threshold = 800;
 
 // Include additional code files
 #include "TurnSensor.h"
@@ -161,45 +161,55 @@ void semiAutoControl(String cmd) {
 // Function to handle auto control commands
 void autoControl(String cmd) {
 
-  //TODO: check front, left, right and lastly behind for open area
-  bool pathValues[3] = { false, false, false };
+  bool active = true;
 
-  for (uint8_t x = 0; x <= 2; x++) {
+  // Sets multiplier to 1 for the turning
+  updateMultiplier(1);
 
-    switch (x) {
-      case 0:
-        turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
-        break;
-      case 1:
-        turnZumo(-turnAngle180, motorSpeed, -motorSpeed, rightTurnCheck);
-        break;
-      case 2:
-        turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
-        break;
+  while (active) {
+
+    //TODO: check front, left, right and lastly behind for open area
+    bool pathValues[4] = { false, false, false, false };
+
+    for (uint8_t x = 0; x <= 3; x++) {
+
+      switch (x) {
+        case 1:
+          turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
+          break;
+        case 2:
+          turnZumo(-turnAngle180, motorSpeed, -motorSpeed, rightTurnCheck);
+          break;
+        case 3:
+          turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
+          break;
+      }
+
+      lineSensors.read(lineSensorValues);
+      const uint16_t lineValue = lineSensorValues[1];
+
+      SERIAL_COM.println(lineValue);
+
+      if (!(lineValue > threshold)) {
+        pathValues[x] = true;
+      }
     }
 
-    lineSensors.read(lineSensorValues);
-    const uint16_t lineValue = lineSensorValues[1];
-
-    if (lineValue > threshold) {
-      pathValues[x] = false;
-      continue;
-    }
-    pathValues[x] = true;
-  }
-
-  // Reset rotation
-  turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
-
-  if (pathValues[0] == true) {
-    turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
-    autoNavigator();    
-  } else if (pathValues[1] == true) {
-    turnZumo(-turnAngle90, motorSpeed, -motorSpeed, rightTurnCheck);
-    autoNavigator();
-  } else if (pathValues[2] == true) {
+    // Reset rotation
     turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
-    autoNavigator();
+
+    if (pathValues[0] == true) {
+      turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
+      autoNavigator();
+    } else if (pathValues[1] == true) {
+      turnZumo(-turnAngle90, motorSpeed, -motorSpeed, rightTurnCheck);
+      autoNavigator();
+    } else if (pathValues[2] == true) {
+      turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
+      autoNavigator();
+    }
+
+    active = false;
   }
 }
 
@@ -209,6 +219,8 @@ void autoNavigator() {
   bool active = false;
 
   float modifyer = 1.35f;
+
+  updateMultiplier(1);
 
   // Loop until the robot reaches the end of a straight line
   while (active) {
