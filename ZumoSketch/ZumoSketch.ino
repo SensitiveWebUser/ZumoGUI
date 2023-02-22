@@ -14,7 +14,7 @@ Zumo32U4Buzzer buzzer;
 Zumo32U4IMU imu;
 
 // Sets Serial Communication type
-#define SERIAL_COM Serial
+#define SERIAL_COM Serial1
 
 // Motor speed variables
 #define MOTOR_SPEED 100
@@ -24,7 +24,7 @@ static uint16_t rotationSpeed = MOTOR_SPEED * 0.5f;
 
 // Mode variables
 static const uint8_t MODE_ONE = 1, MODE_TWO = 2, MODE_THREE = 3;
-static uint8_t mode = MODE_TWO;
+static uint8_t mode = MODE_THREE;
 
 // Event LED variables
 static uint64_t prevLEDMillis = 0;
@@ -32,7 +32,7 @@ static const uint16_t EVENT_LED_INTERVAL = 1000;
 
 // Line sensor values
 static uint16_t lineSensorValues[3] = { 0, 0, 0 };
-static const uint16_t threshold = 800;
+static const uint16_t threshold = 250;
 
 // Include additional code files
 #include "TurnSensor.h"
@@ -162,11 +162,13 @@ void semiAutoControl(String cmd) {
 void autoControl(String cmd) {
 
   bool active = true;
+  //Used to control for cycle
+  uint16_t cycle = 0;
 
   // Sets multiplier to 1 for the turning
   updateMultiplier(1);
 
-  while (active) {
+  while (active && cycle < 20) {
 
     //TODO: check front, left, right and lastly behind for open area
     bool pathValues[4] = { false, false, false, false };
@@ -199,24 +201,27 @@ void autoControl(String cmd) {
     turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
 
     if (pathValues[0] == true) {
+      autoNavigator();
+    }
+    else if (pathValues[1] == true) {
       turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
       autoNavigator();
-    } else if (pathValues[1] == true) {
+    } else if (pathValues[2] == true) {
       turnZumo(-turnAngle90, motorSpeed, -motorSpeed, rightTurnCheck);
       autoNavigator();
-    } else if (pathValues[2] == true) {
+    } else if (pathValues[3] == true) {
       turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
       autoNavigator();
     }
 
-    active = false;
+    cycle++;
   }
 }
 
 // Function to handle auto navigation
 void autoNavigator() {
 
-  bool active = false;
+  bool active = true;
 
   float modifyer = 1.35f;
 
