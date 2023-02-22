@@ -42,7 +42,7 @@ const App = () => {
 				React client and a Node server to communicate with an Arduino Zumo Bot.
 			</Typography>
 			<Gamepad
-				onA={() => emitSerialData('backwards')}
+				onA={() => emitSerialData('mode1')}
 				onB={() => emitSerialData('right')}
 				onX={() => emitSerialData('left')}
 				onY={() => emitSerialData('forwards')}
