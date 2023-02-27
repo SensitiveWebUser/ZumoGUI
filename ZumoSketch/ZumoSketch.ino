@@ -24,11 +24,17 @@ static uint16_t rotationSpeed = MOTOR_SPEED * 0.5f;
 
 // Mode variables
 static const uint8_t MODE_ONE = 1, MODE_TWO = 2, MODE_THREE = 3;
-static uint8_t mode = MODE_THREE;
+static uint8_t mode = MODE_ONE;
 
 // Event LED variables
 static uint64_t prevLEDMillis = 0;
 static const uint16_t EVENT_LED_INTERVAL = 1000;
+
+// Event Proximity check variables
+static uint64_t prevProximityMillis = 0;
+static bool cooldown = false;
+static const uint16_t EVENT_PROXIMITY_INTERVAL = 1000;
+static const uint16_t EVENT_COOLDOWN_PROXIMITY_INTERVAL = 1000;
 
 // Line sensor values
 static uint16_t lineSensorValues[3] = { 0, 0, 0 };
@@ -45,7 +51,7 @@ void setup() {
 
   // Initialize line sensors and proximity sensors
   lineSensors.initThreeSensors();
-  proxSensors.initFrontSensor();
+  proxSensors.initThreeSensors();
 
   // Setup turn sensor
   turnSensorSetup();
@@ -60,10 +66,13 @@ void loop() {
     // Read the command from the Serial buffer
     String cmd = SERIAL_COM.readStringUntil('\n');
 
-    // TODO: Add a command to switch between modes
-    if (cmd == "switchMode") {
-      mode = mode != MODE_ONE ? MODE_ONE : MODE_TWO;
-      motors.setSpeeds(0, 0);
+    //Sets the mode of the bot
+    if (cmd == "mode1") {
+      mode = MODE_ONE;
+    } else if (cmd == "mode2") {
+      mode = MODE_TWO;
+    } else if (cmd == "mode3") {
+      mode = MODE_THREE;
     }
 
     // Check the current mode and handle the command accordingly
@@ -103,7 +112,11 @@ void manualControl(String cmd) {
   motorSpeed = MOTOR_SPEED * multiplier;
   rotationSpeed = motorSpeed * 0.5f;
 
+  // Does a promximity check for objects
+  proximityCheck();
+
   // Check the command and set the motor speeds accordingly
+  // "if" statments used to optimise code for compiler
   if (cmd == "forward") {
     // Set both motors to run forward at the same speed
     motors.setSpeeds(motorSpeed, motorSpeed);
@@ -131,13 +144,14 @@ void manualControl(String cmd) {
 // Function to handle semi-auto control commands
 void semiAutoControl(String cmd) {
 
-  //
+  //TODO change
   SERIAL_COM.print("Make a turn using 'left' or 'right' \n");
 
   // Sets multiplier to 3 for the turning
   updateMultiplier(3);
 
   // Check the command and rotate the robot accordingly
+  // "if" statments used to optimise code for compiler
   if (cmd == "left") {
     // Set the left motor to run backward and the right motor to run forward (90 degree left turn)
     SERIAL_COM.println("Turning left");
@@ -162,15 +176,21 @@ void semiAutoControl(String cmd) {
 void autoControl(String cmd) {
 
   bool active = true;
-  //Used to control for cycle
-  uint16_t cycle = 0;
 
-  // Sets multiplier to 1 for the turning
-  updateMultiplier(1);
+  // Used to control for cycle
+  uint16_t cycle = 20;
 
-  while (active && cycle < 20) {
+  // Will work thought the maze until 20 corridors have been explored
+  while (active && cycle > 0) {
 
-    //TODO: check front, left, right and lastly behind for open area
+    if (SERIAL_COM.available() > 0) {
+      active = false;
+      break;
+    }
+
+    // Does a promximity check for objects
+    proximityCheck();
+
     bool pathValues[4] = { false, false, false, false };
 
     for (uint8_t x = 0; x <= 3; x++) {
@@ -200,10 +220,10 @@ void autoControl(String cmd) {
     // Reset rotation
     turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
 
+    // Will in order of importance and ability turn to face the next corridor
     if (pathValues[0] == true) {
       autoNavigator();
-    }
-    else if (pathValues[1] == true) {
+    } else if (pathValues[1] == true) {
       turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
       autoNavigator();
     } else if (pathValues[2] == true) {
@@ -214,7 +234,7 @@ void autoControl(String cmd) {
       autoNavigator();
     }
 
-    cycle++;
+    cycle--;
   }
 }
 
@@ -244,6 +264,9 @@ void autoNavigator() {
     // Read the line sensor values
     lineSensors.read(lineSensorValues);
     printReadingsToSerial();
+
+    // Does a promximity check for objects
+    proximityCheck();
 
     // Loop through the line sensor values and check for a line
     for (uint8_t postion = 0; postion <= 2; postion++) {
@@ -279,5 +302,26 @@ void autoNavigator() {
 
     // Set the motor speeds
     motors.setSpeeds(leftMotor, rightMotor);
+  }
+}
+
+void proximityCheck() {
+
+  // Set current time and time since last proximity check
+  const uint64_t currMillis = millis();
+  const uint64_t proximityTimeUpdate = (uint64_t)(currMillis - prevLEDMillis);
+  const uint64_t interval = cooldown ? EVENT_COOLDOWN_PROXIMITY_INTERVAL : EVENT_PROXIMITY_INTERVAL;
+
+  if (proximityTimeUpdate >= interval) {
+
+    bool hasObject = false;
+
+    // Send IR pulses and read the proximity sensors.
+    proxSensors.read();
+
+    if (hasObject) {
+      SERIAL_COM.println("point");
+      buzzer.play("a");
+    }
   }
 }
