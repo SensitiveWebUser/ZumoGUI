@@ -42,7 +42,7 @@ const Canvas = (props) => {
 			// Draw a line with the current color and value only if direction has not changed
 			if (direction === prevDir) {
 				ctx.strokeStyle = color;
-				ctx.lineWidth = 3;
+				ctx.lineWidth = 6;
 				ctx.beginPath();
 				ctx.moveTo(x - value / 2, y - value / 2);
 				ctx.lineTo(x + value / 2, y + value / 2);

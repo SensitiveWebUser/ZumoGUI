@@ -32,6 +32,7 @@ const actions = [
 	{ key: 'mode1', icon: Filter1Icon, label: 'mode 1' },
 	{ key: 'mode2', icon: Filter2Icon, label: 'mode 2' },
 	{ key: 'mode3', icon: Filter3Icon, label: 'mode 3' },
+	{ key: 'SS', icon: Filter3Icon, label: 'ss' },
 ];
 
 const App = () => {
@@ -42,6 +43,36 @@ const App = () => {
 
 	const socket = useContext(SocketContext);
 	const emitSerialData = (key) => socket.emit('serialdata', key);
+
+	socket.on('data', (message) => {
+		console.log(`message received: ${message}`);
+		const fix = `${message[0]}`;
+		switch (fix) {
+			case 'u':
+				setDirection('up');
+				break;
+			case 'd':
+				setDirection('down');
+				break;
+			case 'l':
+				setDirection('left');
+				break;
+			case 'r':
+				setDirection('right');
+				break;
+			case 's':
+				setDirection('stop');
+				break;
+			case 'p':
+				setDirection('point');
+				break;
+			case 'c':
+				setDirection('clear');
+				break;
+			default:
+		}
+		console.log(direction);
+	});
 
 	return (
 		<Box>
@@ -107,21 +138,21 @@ const App = () => {
 							<ControlButton
 								icon={Filter1Icon}
 								text="Mode 1"
-								onClick={() => emitSerialData('Mode1')}
+								onClick={() => emitSerialData('mode1')}
 							/>
 						</Grid>
 						<Grid item xs={4} md={2}>
 							<ControlButton
 								icon={Filter2Icon}
 								text="Mode 2"
-								onClick={() => emitSerialData('Mode2')}
+								onClick={() => emitSerialData('mode2')}
 							/>
 						</Grid>
 						<Grid item xs={4} md={2}>
 							<ControlButton
 								icon={Filter3Icon}
 								text="Mode 3"
-								onClick={() => emitSerialData('Mode3')}
+								onClick={() => emitSerialData('mode3')}
 							/>
 						</Grid>
 					</Grid>
@@ -137,14 +168,14 @@ const App = () => {
 							<ControlButton
 								icon={KeyboardArrowUpIcon}
 								text="Accelerate"
-								onClick={() => emitSerialData('Accelerate')}
+								onClick={() => emitSerialData('accelerate')}
 							/>
 						</Grid>
 						<Grid item xs={4} md={2}>
 							<ControlButton
 								icon={KeyboardArrowDownIcon}
 								text="Decelerate"
-								onClick={() => emitSerialData('Decelerate')}
+								onClick={() => emitSerialData('decelerate')}
 							/>
 						</Grid>
 					</Grid>
@@ -160,7 +191,7 @@ const App = () => {
 							<ControlButton
 								icon={UndoIcon}
 								text="Left"
-								onClick={() => emitSerialData('Left')}
+								onClick={() => emitSerialData('left')}
 							/>
 						</Grid>
 						<Grid item xs={4} md={2}>
@@ -168,14 +199,14 @@ const App = () => {
 								<ControlButton
 									icon={KeyboardArrowUpIcon}
 									text="Forward"
-									onClick={() => emitSerialData('Forward')}
+									onClick={() => emitSerialData('forward')}
 								/>
 							</Box>
 							<Box>
 								<ControlButton
 									icon={KeyboardArrowDownIcon}
 									text="Backward"
-									onClick={() => emitSerialData('Backward')}
+									onClick={() => emitSerialData('backward')}
 								/>
 							</Box>
 						</Grid>
@@ -183,7 +214,7 @@ const App = () => {
 							<ControlButton
 								icon={RedoIcon}
 								text="Right"
-								onClick={() => emitSerialData('Right')}
+								onClick={() => emitSerialData('right')}
 							/>
 						</Grid>
 					</Grid>
@@ -191,7 +222,7 @@ const App = () => {
 						<ControlButton
 							icon={StopIcon}
 							text="Stop"
-							onClick={() => emitSerialData('Stop')}
+							onClick={() => emitSerialData('stop')}
 						/>
 					</Box>
 
