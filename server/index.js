@@ -47,5 +47,6 @@ serialPort.on('open', function () {
 	console.log('-- Connection opened --');
 	serialPort.on('data', function (data) {
 		console.log('Data received: ' + data);
+		io.emit('data', `${data}`);
 	});
 });

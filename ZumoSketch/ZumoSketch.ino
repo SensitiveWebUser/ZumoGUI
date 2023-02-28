@@ -38,6 +38,7 @@ static const uint16_t EVENT_COOLDOWN_PROXIMITY_INTERVAL = 1000;
 
 // Line sensor values
 static uint16_t lineSensorValues[3] = { 0, 0, 0 };
+static uint8_t lastPos = 0;
 static const uint16_t threshold = 250;
 
 // Include additional code files
@@ -69,10 +70,13 @@ void loop() {
     //Sets the mode of the bot
     if (cmd == "mode1") {
       mode = MODE_ONE;
+      SERIAL_COM.println("c");
     } else if (cmd == "mode2") {
       mode = MODE_TWO;
+      SERIAL_COM.println("c");
     } else if (cmd == "mode3") {
       mode = MODE_THREE;
+      SERIAL_COM.println("c");
     }
 
     // Check the current mode and handle the command accordingly
@@ -120,18 +124,23 @@ void manualControl(String cmd) {
   if (cmd == "forward") {
     // Set both motors to run forward at the same speed
     motors.setSpeeds(motorSpeed, motorSpeed);
+    drawLine(0);
   } else if (cmd == "backward") {
     // Set both motors to run backward at the same speed
     motors.setSpeeds(-motorSpeed, -motorSpeed);
+    drawLine(2);
   } else if (cmd == "left") {
     // Set the left motor to run backward and the right motor to run forward
     motors.setSpeeds(-rotationSpeed, rotationSpeed);
+    drawLine(3);
   } else if (cmd == "right") {
     // Set the left motor to run forward and the right motor to run backward
     motors.setSpeeds(rotationSpeed, -rotationSpeed);
+    drawLine(1);
   } else if (cmd == "stop") {
     // Stop both motors
     motors.setSpeeds(0, 0);
+    drawStop(false);
   } else if (cmd == "accelerate") {
     // Decrease the speed multiplier
     updateMultiplier(multiplier + 1);
@@ -144,30 +153,29 @@ void manualControl(String cmd) {
 // Function to handle semi-auto control commands
 void semiAutoControl(String cmd) {
 
-  //TODO change
-  SERIAL_COM.print("Make a turn using 'left' or 'right' \n");
-
-  // Sets multiplier to 3 for the turning
-  updateMultiplier(3);
+  // Sets multiplier to 1 for the turning
+  updateMultiplier(1);
 
   // Check the command and rotate the robot accordingly
   // "if" statments used to optimise code for compiler
   if (cmd == "left") {
     // Set the left motor to run backward and the right motor to run forward (90 degree left turn)
-    SERIAL_COM.println("Turning left");
     turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
+    drawLine(3);
     autoNavigator();
   } else if (cmd == "right") {
-    SERIAL_COM.println("Turning Right");
     // Set the left motor to run forward and the right motor to run backward (90 degree right turn)
     turnZumo(-turnAngle90, motorSpeed, -motorSpeed, rightTurnCheck);
+    drawLine(1);
     autoNavigator();
   } else if (cmd == "backward") {
     // Set the left motor to run forward and the right motor to run backward (180 degree turn)
     turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
+    drawLine(2);
     autoNavigator();
-  } else if (cmd == "mode1") {
+  } else if (cmd == "SS") {
     // TODO: Remove this option
+    drawLine(0);
     autoNavigator();
   }
 }
@@ -193,6 +201,10 @@ void autoControl(String cmd) {
 
     bool pathValues[4] = { false, false, false, false };
 
+    motors.setSpeeds(-motorSpeed, -motorSpeed);
+    delay(100);
+    motors.setSpeeds(0,0);
+
     for (uint8_t x = 0; x <= 3; x++) {
 
       switch (x) {
@@ -210,8 +222,6 @@ void autoControl(String cmd) {
       lineSensors.read(lineSensorValues);
       const uint16_t lineValue = lineSensorValues[1];
 
-      SERIAL_COM.println(lineValue);
-
       if (!(lineValue > threshold)) {
         pathValues[x] = true;
       }
@@ -223,6 +233,7 @@ void autoControl(String cmd) {
     // Will in order of importance and ability turn to face the next corridor
     if (pathValues[0] == true) {
       autoNavigator();
+
     } else if (pathValues[1] == true) {
       turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
       autoNavigator();
@@ -236,6 +247,8 @@ void autoControl(String cmd) {
 
     cycle--;
   }
+
+  drawStop(false);
 }
 
 // Function to handle auto navigation
@@ -263,7 +276,7 @@ void autoNavigator() {
 
     // Read the line sensor values
     lineSensors.read(lineSensorValues);
-    printReadingsToSerial();
+    //printReadingsToSerial();
 
     // Does a promximity check for objects
     proximityCheck();
@@ -303,6 +316,8 @@ void autoNavigator() {
     // Set the motor speeds
     motors.setSpeeds(leftMotor, rightMotor);
   }
+
+  drawStop(false);
 }
 
 void proximityCheck() {
@@ -320,7 +335,7 @@ void proximityCheck() {
     proxSensors.read();
 
     if (hasObject) {
-      SERIAL_COM.println("point");
+      drawStop(true);
       buzzer.play("a");
     }
   }

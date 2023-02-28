@@ -54,3 +54,35 @@ bool rightTurnCheck(int64_t newAngle) {
 
   return false;
 }
+
+void drawLine(uint8_t newPos) {
+
+  lastPos += newPos;
+
+  if (lastPos > 3) {
+    lastPos = 3 - (lastPos % 3);
+  }
+
+  switch (lastPos) {
+    case 0:
+      SERIAL_COM.println("u");
+      break;
+    case 1:
+      SERIAL_COM.println("r");
+      break;
+    case 2:
+      SERIAL_COM.println("d");
+      break;
+    case 3:
+      SERIAL_COM.println("l");
+      break;
+  }
+}
+
+void drawStop(bool isPoint) {
+  if (isPoint) {
+    SERIAL_COM.println("p");
+    return;      
+  }
+  SERIAL_COM.println("s");
+}
