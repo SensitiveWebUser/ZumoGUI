@@ -3,10 +3,13 @@
 // Function to print the line sensor readings to the Serial monitor
 void printReadingsToSerial() {
   char stringBuffer[200];
-  sprintf(stringBuffer, "Values: %d %d %d\n",
-          lineSensorValues[0],
-          lineSensorValues[1],
-          lineSensorValues[2]);
+  sprintf(stringBuffer, "Values: %d %d %d %d %d %d \n",
+          proximitySensorValues[0],
+          proximitySensorValues[1],
+          proximitySensorValues[2],
+          proximitySensorValues[3],
+          proximitySensorValues[4],
+          proximitySensorValues[5]);
   SERIAL_COM.print(stringBuffer);
 }
 
@@ -82,6 +85,8 @@ void drawLine(uint8_t newPos) {
 void drawStop(bool isPoint) {
   if (isPoint) {
     SERIAL_COM.println("p");
+    delay(100);
+    drawLine(0);
     return;      
   }
   SERIAL_COM.println("s");

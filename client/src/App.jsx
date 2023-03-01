@@ -296,12 +296,12 @@ const App = () => {
 							</Box>
 						</Box>
 					)}
-
-					<Box mt={2} mx={6}>
-						<Canvas color={color} speed={value} direction={direction} />
-					</Box>
 				</Box>
 			</Gamepad>
+
+			<Box mt={2} mx={6}>
+				<Canvas color={color} speed={value} direction={direction} />
+			</Box>
 		</Box>
 	);
 };
