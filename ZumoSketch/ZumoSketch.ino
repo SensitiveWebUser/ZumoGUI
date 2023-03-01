@@ -32,14 +32,17 @@ static const uint16_t EVENT_LED_INTERVAL = 1000;
 
 // Event Proximity check variables
 static uint64_t prevProximityMillis = 0;
-static bool cooldown = false;
 static const uint16_t EVENT_PROXIMITY_INTERVAL = 1000;
 static const uint16_t EVENT_COOLDOWN_PROXIMITY_INTERVAL = 1000;
+static uint8_t proximitySensorValues[6] = { 0, 0, 0, 0, 0, 0 };
+static uint8_t proximityThreshold = 5;
+static bool cooldown = false;
 
 // Line sensor values
 static uint16_t lineSensorValues[3] = { 0, 0, 0 };
 static uint8_t lastPos = 0;
 static const uint16_t threshold = 250;
+
 
 // Include additional code files
 #include "TurnSensor.h"
@@ -69,14 +72,14 @@ void loop() {
 
     //Sets the mode of the bot
     if (cmd == "mode1") {
+      SERIAL_COM.println("c");
       mode = MODE_ONE;
-      SERIAL_COM.println("c");
     } else if (cmd == "mode2") {
+      SERIAL_COM.println("c");
       mode = MODE_TWO;
-      SERIAL_COM.println("c");
     } else if (cmd == "mode3") {
-      mode = MODE_THREE;
       SERIAL_COM.println("c");
+      mode = MODE_THREE;
     }
 
     // Check the current mode and handle the command accordingly
@@ -116,31 +119,28 @@ void manualControl(String cmd) {
   motorSpeed = MOTOR_SPEED * multiplier;
   rotationSpeed = motorSpeed * 0.5f;
 
-  // Does a promximity check for objects
-  proximityCheck();
-
   // Check the command and set the motor speeds accordingly
   // "if" statments used to optimise code for compiler
   if (cmd == "forward") {
     // Set both motors to run forward at the same speed
-    motors.setSpeeds(motorSpeed, motorSpeed);
     drawLine(0);
+    motors.setSpeeds(motorSpeed, motorSpeed);
   } else if (cmd == "backward") {
     // Set both motors to run backward at the same speed
-    motors.setSpeeds(-motorSpeed, -motorSpeed);
     drawLine(2);
+    motors.setSpeeds(-motorSpeed, -motorSpeed);
   } else if (cmd == "left") {
     // Set the left motor to run backward and the right motor to run forward
-    motors.setSpeeds(-rotationSpeed, rotationSpeed);
     drawLine(3);
+    motors.setSpeeds(-rotationSpeed, rotationSpeed);
   } else if (cmd == "right") {
     // Set the left motor to run forward and the right motor to run backward
-    motors.setSpeeds(rotationSpeed, -rotationSpeed);
     drawLine(1);
+    motors.setSpeeds(rotationSpeed, -rotationSpeed);
   } else if (cmd == "stop") {
     // Stop both motors
-    motors.setSpeeds(0, 0);
     drawStop(false);
+    motors.setSpeeds(0, 0);
   } else if (cmd == "accelerate") {
     // Decrease the speed multiplier
     updateMultiplier(multiplier + 1);
@@ -153,7 +153,7 @@ void manualControl(String cmd) {
 // Function to handle semi-auto control commands
 void semiAutoControl(String cmd) {
 
-  // Sets multiplier to 1 for the turning
+  // Sets multiplier to 1 for the movement
   updateMultiplier(1);
 
   // Check the command and rotate the robot accordingly
@@ -173,8 +173,7 @@ void semiAutoControl(String cmd) {
     turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
     drawLine(2);
     autoNavigator();
-  } else if (cmd == "SS") {
-    // TODO: Remove this option
+  } else if (cmd == "forward") {
     drawLine(0);
     autoNavigator();
   }
@@ -191,57 +190,64 @@ void autoControl(String cmd) {
   // Will work thought the maze until 20 corridors have been explored
   while (active && cycle > 0) {
 
+    drawStop(false);
+
     if (SERIAL_COM.available() > 0) {
       active = false;
       break;
     }
 
-    // Does a promximity check for objects
-    proximityCheck();
-
+    // Array used to check sensor values for check,
     bool pathValues[4] = { false, false, false, false };
+    // Used to set value postion in array
+    uint8_t postion = 0;
 
-    motors.setSpeeds(-motorSpeed, -motorSpeed);
-    delay(100);
-    motors.setSpeeds(0,0);
-
-    for (uint8_t x = 0; x <= 3; x++) {
+    for (uint8_t x = 0; x < 2; x++) {
 
       switch (x) {
+        case 0:
+          turnZumo(turnAngleHalf45, -motorSpeed, motorSpeed, leftTurnCheck);
+          break;
         case 1:
-          turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
-          break;
-        case 2:
-          turnZumo(-turnAngle180, motorSpeed, -motorSpeed, rightTurnCheck);
-          break;
-        case 3:
-          turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
+          turnZumo(-turnAngle45 + -turnAngleHalf45, motorSpeed, -motorSpeed, rightTurnCheck);
+          postion = 2;
           break;
       }
 
-      lineSensors.read(lineSensorValues);
-      const uint16_t lineValue = lineSensorValues[1];
+      delay(100);
 
-      if (!(lineValue > threshold)) {
-        pathValues[x] = true;
+      lineSensors.read(lineSensorValues);
+      const uint16_t leftLineValue = lineSensorValues[0];
+      const uint16_t rightLineValue = lineSensorValues[2];
+
+
+      if (!(leftLineValue > threshold)) {
+        pathValues[postion] = true;
+      }
+
+      if (!(rightLineValue > threshold)) {
+        pathValues[postion + 1] = true;
       }
     }
 
     // Reset rotation
-    turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
+    turnZumo(turnAngle45, -motorSpeed, motorSpeed, leftTurnCheck);
 
     // Will in order of importance and ability turn to face the next corridor
-    if (pathValues[0] == true) {
+    if (pathValues[1] == true && pathValues[2] == true) {
+      drawLine(0);
       autoNavigator();
-
-    } else if (pathValues[1] == true) {
+    } else if (pathValues[0] == true) {
       turnZumo(turnAngle90, -motorSpeed, motorSpeed, leftTurnCheck);
-      autoNavigator();
-    } else if (pathValues[2] == true) {
-      turnZumo(-turnAngle90, motorSpeed, -motorSpeed, rightTurnCheck);
+      drawLine(3);
       autoNavigator();
     } else if (pathValues[3] == true) {
+      turnZumo(-turnAngle90, motorSpeed, -motorSpeed, rightTurnCheck);
+      drawLine(1);
+      autoNavigator();
+    } else {
       turnZumo(turnAngle180, -motorSpeed, motorSpeed, leftTurnCheck);
+      drawLine(2);
       autoNavigator();
     }
 
@@ -329,12 +335,28 @@ void proximityCheck() {
 
   if (proximityTimeUpdate >= interval) {
 
+    cooldown = false;
     bool hasObject = false;
 
     // Send IR pulses and read the proximity sensors.
     proxSensors.read();
 
+    proximitySensorValues[0] = proxSensors.countsFrontWithLeftLeds();
+    proximitySensorValues[1] = proxSensors.countsFrontWithRightLeds();
+    proximitySensorValues[2] = proxSensors.countsRightWithLeftLeds();
+    proximitySensorValues[3] = proxSensors.countsRightWithRightLeds();
+    proximitySensorValues[4] = proxSensors.countsLeftWithRightLeds();
+    proximitySensorValues[5] = proxSensors.countsLeftWithLeftLeds();
+
+    for (uint8_t sensor = 0; sensor < 6; sensor++) {
+      if (proximitySensorValues[sensor] >= proximityThreshold) {
+        hasObject = true;
+        break;
+      }
+    }
+
     if (hasObject) {
+      cooldown = true;
       drawStop(true);
       buzzer.play("a");
     }

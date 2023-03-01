@@ -21,6 +21,8 @@ static const int64_t turnAngle90 = turnAngle45 * 2;
 // This constant represents a tun of 180 degrees.
 static const int64_t turnAngle180 = turnAngle90 * 2;
 
+static const int64_t turnAngleHalf45 = turnAngle45 / 2;
+
 // This constant represents a turn of approximately 1 degree.
 static const int64_t turnAngle1 = (turnAngle45 + 22) / 45;
 
