@@ -32,13 +32,10 @@ const actions = [
 	{ key: 'mode1', icon: Filter1Icon, label: 'mode 1' },
 	{ key: 'mode2', icon: Filter2Icon, label: 'mode 2' },
 	{ key: 'mode3', icon: Filter3Icon, label: 'mode 3' },
-	{ key: 'SS', icon: Filter3Icon, label: 'ss' },
 ];
 
 const App = () => {
 	const [hasBoxlayout, setHasBoxlayout] = useState(false);
-	const [color, setColor] = useState('white');
-	const [value, setValue] = useState(1);
 	const [direction, setDirection] = useState('stop');
 
 	const socket = useContext(SocketContext);
@@ -300,7 +297,7 @@ const App = () => {
 			</Gamepad>
 
 			<Box mt={2} mx={6}>
-				<Canvas color={color} speed={value} direction={direction} />
+				<Canvas color={'white'} speed={1} direction={direction} />
 			</Box>
 		</Box>
 	);

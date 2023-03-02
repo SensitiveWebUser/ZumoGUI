@@ -201,7 +201,8 @@ void autoControl(String cmd) {
     bool pathValues[4] = { false, false, false, false };
     // Used to set value postion in array
     uint8_t postion = 0;
-
+    
+    // moves half of 45 degrees to the left then right to check for a wall
     for (uint8_t x = 0; x < 2; x++) {
 
       switch (x) {
@@ -216,6 +217,7 @@ void autoControl(String cmd) {
 
       delay(100);
 
+      // Read the line sensor values left and right and check if they are above the threshold
       lineSensors.read(lineSensorValues);
       const uint16_t leftLineValue = lineSensorValues[0];
       const uint16_t rightLineValue = lineSensorValues[2];
@@ -251,9 +253,11 @@ void autoControl(String cmd) {
       autoNavigator();
     }
 
+    // Decrease the cycle count by 1 to prevent infinite loop
     cycle--;
   }
 
+  // Stop the drawing on the client map
   drawStop(false);
 }
 
@@ -262,6 +266,7 @@ void autoNavigator() {
 
   bool active = true;
 
+  // Used to control the speed of the robot turning
   float modifyer = 1.35f;
 
   updateMultiplier(1);
@@ -326,6 +331,7 @@ void autoNavigator() {
   drawStop(false);
 }
 
+// Function to handle the proximity check for objects
 void proximityCheck() {
 
   // Set current time and time since last proximity check
@@ -333,6 +339,7 @@ void proximityCheck() {
   const uint64_t proximityTimeUpdate = (uint64_t)(currMillis - prevLEDMillis);
   const uint64_t interval = cooldown ? EVENT_COOLDOWN_PROXIMITY_INTERVAL : EVENT_PROXIMITY_INTERVAL;
 
+  // Check if the time since last proximity check is greater than the interval
   if (proximityTimeUpdate >= interval) {
 
     cooldown = false;
@@ -341,6 +348,7 @@ void proximityCheck() {
     // Send IR pulses and read the proximity sensors.
     proxSensors.read();
 
+    // Read the proximity sensor values
     proximitySensorValues[0] = proxSensors.countsFrontWithLeftLeds();
     proximitySensorValues[1] = proxSensors.countsFrontWithRightLeds();
     proximitySensorValues[2] = proxSensors.countsRightWithLeftLeds();
@@ -348,6 +356,7 @@ void proximityCheck() {
     proximitySensorValues[4] = proxSensors.countsLeftWithRightLeds();
     proximitySensorValues[5] = proxSensors.countsLeftWithLeftLeds();
 
+    // Loop through the proximity sensor values and check if any are above the threshold
     for (uint8_t sensor = 0; sensor < 6; sensor++) {
       if (proximitySensorValues[sensor] >= proximityThreshold) {
         hasObject = true;
@@ -355,6 +364,7 @@ void proximityCheck() {
       }
     }
 
+    // Play a sound and draw a point on the client map if an object is detected
     if (hasObject) {
       cooldown = true;
       drawStop(true);
