@@ -54,8 +54,8 @@ To run the zumo bot, the user needs to have the Arduino IDE installed on their m
 
 The following resources were used in the development of the application:
 
-- [Zumo Robot](https://www.pololu.com/category/148/zumo-robot-kits)
-- [Arduino IDE](https://www.arduino.cc/en/software)
+- [Zumo Robot](https://www.pololu.com/category/148/zumo-robot-kits) - The robot used in the project.
+- [Arduino IDE](https://www.arduino.cc/en/software) - The IDE used to program the zumo bot.
 - [Create React App](https://reactjs.org/) - The boilerplate used to create the client.
 - [Express](https://expressjs.com/) - The framework used to create the server.
 - [SocketIO](https://socket.io/) - The library used to create the server.
