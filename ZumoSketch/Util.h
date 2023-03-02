@@ -58,14 +58,18 @@ bool rightTurnCheck(int64_t newAngle) {
   return false;
 }
 
+// Function to send the specified command to the server about the direction the robot is facing.
 void drawLine(uint8_t newPos) {
 
   lastPos += newPos;
 
+  // If the lastPos is greater than 3, we need to wrap it around
+  // 0 = up, 1 = right, 2 = down, 3 = left
   if (lastPos > 3) {
     lastPos = 3 - (lastPos % 3);
   }
 
+  // Takes the new position and sends the corresponding command to the server
   switch (lastPos) {
     case 0:
       SERIAL_COM.println("u");
@@ -82,10 +86,11 @@ void drawLine(uint8_t newPos) {
   }
 }
 
+// Function to send the specified command to the server if the robot has stopped or has found a point of interest
 void drawStop(bool isPoint) {
   if (isPoint) {
     SERIAL_COM.println("p");
-    delay(100);
+    delay(75);
     drawLine(0);
     return;      
   }
